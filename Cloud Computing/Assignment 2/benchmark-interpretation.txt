@@ -1,0 +1,22 @@
+BENCHMARK RELAY
+
+
+The results were expected for both of the scenarios because of the difference in the following factors:
+•	Load on server was different on different days and time.
+•	The network speed was also inconsistent.
+
+
+VM List
+The graph shows different trends on different days. On the January 13th the median execution time for each output of 10 iterations decreased on 
+different timing of the day.  The median execution time for each output on the next day shows irregular variations. On the January 15th there was
+ drastic increase in the execution time of each output. 
+The last execution of the day showed the highest trend in the graph. 
+The median execution time for each output on January 16th was almost the same. 
+
+VM Boot
+The output of all the recorded median execution time lies between 15 to 20 seconds. With the lowest record on the last execution of 14th of January
+ and the highest execution time taken was on very next and the first execution of the day i.e. 15th of January. Every time of the day when these 
+executions were performed, each output had its own median execution time which was different from one another. 
+
+
+

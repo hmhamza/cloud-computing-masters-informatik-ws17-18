@@ -1,0 +1,15 @@
+version: "3"
+services:
+  backend-server:
+    image: wali112/assignment3:backend
+    volumes:
+      - /etc:/hypervisor_etc
+    ports:
+      - "8000:80"
+    deploy:
+      replicas: 5
+      placement:
+        constraints:
+          - node.hostname != cc-docker-frontend
+      restart_policy:
+        condition: on-failure

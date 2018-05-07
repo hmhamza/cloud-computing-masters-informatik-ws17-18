@@ -1,0 +1,21 @@
+{
+    "NovaServers.boot_and_delete_server": [
+        {
+            "args": {
+                "flavor": {
+                    "name": "Cloud Computing"
+                },
+                "image": {
+                    "name": "ubuntu-16.04"
+                },
+                "force_delete": false
+            },
+            "runner": {
+                "type": "constant",
+                "times": 10,
+                "concurrency": 2
+            },
+            "context": {}
+        }
+    ]
+}

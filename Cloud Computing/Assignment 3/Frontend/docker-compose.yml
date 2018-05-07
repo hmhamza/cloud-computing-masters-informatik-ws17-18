@@ -1,0 +1,17 @@
+version: "3"
+services:
+  frontend-server:
+    image: wali112/assignment3:frontend
+    volumes:
+      - /etc:/hypervisor_etc
+    ports:
+      - "80:80"
+    environment:
+      - CC_BACKEND_SERVERS=${CC_BACKEND_SERVERS}
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.hostname == cc-docker-frontend
+      restart_policy:
+        condition: on-failure

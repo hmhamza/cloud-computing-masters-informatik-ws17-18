@@ -1,0 +1,70 @@
+Instantiate a Heat stack using your server-landscape.yml:
+heat stack-create -f server-landscape.yml -P "image=ubuntu-16.04;zone=Cloud Computing;key_pair=group18Key;public_network=tu-internal;flavor=Cloud Computing" ccG18Stack
+
+//server-landscape.yml is the new template file that we created for this task. -P is used to pass the parameters. A new stack will be created with the name ccG18Stack
+
+List the Created stack: heat stack-list
+
++--------------------------------------+------------+-----------------+---------------------+--------------+
+| id                                   | stack_name | stack_status    | creation_time       | updated_time |
++--------------------------------------+------------+-----------------+---------------------+--------------+
+| 1c6ee6dc-b2c5-47ff-a317-dcdb01fe99b9 | ccG18Stack | CREATE_COMPLETE | 2018-01-14T14:48:10 | None         |
++--------------------------------------+------------+-----------------+---------------------+--------------+
+
+
+Extracting the Floating IPList the Created stack: heat output-show ccG18Stack floatingIP
+
+// ccG18Stack is our stack name. floatingIP is an output variable name that we defined in server-landscape.yml
+
+Output: "10.200.2.206"
+
+
+Copying Key File to the Front End ServerExtracting the Flo: scp -i group18Key.key group18Key.key ubuntu@10.200.2.206:~/
+
+// group18Key.key is the key file that we previously created
+
+Connecting to the Front End Server:
+ssh -i group18Key.key ubuntu@10.200.2.206
+
+// We got the IP: 10.200.2.206 two steps before
+
+Testing Internet Connectivity of the Front End Server:
+ubuntu@ccg18frontendserver:~$ ping www.youtube.com
+
+PING youtube-ui.l.google.com (172.217.17.110) 56(84) bytes of data.
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=1 ttl=56 time=15.4 ms
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=2 ttl=56 time=15.3 ms
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=3 ttl=56 time=15.4 ms
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=4 ttl=56 time=15.6 ms
+
+Connecting to the First Back End Server:
+ubuntu@ccg18frontendserver:~$ ssh -i group18Key.key ubuntu@192.168.2.7
+
+//I viewed this IP: 192.168.2.7 from the OpenStack web interface
+
+Testing Internet Connectivity of First Back End Server: ubuntu@ccg18backendserver-0:~$ ping www.youtube.com
+
+PING youtube-ui.l.google.com (172.217.17.110) 56(84) bytes of data.
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=1 ttl=56 time=16.3 ms
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=2 ttl=56 time=15.5 ms
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=3 ttl=56 time=15.2 ms
+64 bytes from ams15s29-in-f14.1e100.net (172.217.17.110): icmp_seq=4 ttl=56 time=15.6 ms
+
+Logging out from First Backend Server: exit
+
+Connecting to the Second Backend Server:
+ubuntu@ccg18frontendserver:~$ ssh -i group18Key.key ubuntu@192.168.2.6
+
+//I viewed this IP: 192.168.2.6 from the OpenStack web interface
+
+Testing Internet Connectivity of Second Backend Server:
+ubuntu@ccg18backendserver-1:~$ ping www.youtube.com
+
+PING youtube-ui.l.google.com (172.217.20.110) 56(84) bytes of data.
+64 bytes from ams17s01-in-f14.1e100.net (172.217.20.110): icmp_seq=1 ttl=56 time=16.3 ms
+64 bytes from ams17s01-in-f14.1e100.net (172.217.20.110): icmp_seq=2 ttl=56 time=15.6 ms
+64 bytes from ams17s01-in-f14.1e100.net (172.217.20.110): icmp_seq=3 ttl=56 time=17.7 ms
+64 bytes from ams17s01-in-f14.1e100.net (172.217.20.110): icmp_seq=4 ttl=56 time=15.7 ms
+
+
+Note: I got the IP’s of the Back end servers from the OpenStack web interface

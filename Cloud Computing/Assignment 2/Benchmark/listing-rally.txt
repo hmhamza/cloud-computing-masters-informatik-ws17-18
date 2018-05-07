@@ -1,0 +1,15 @@
+Downloading rally and installation:
+wget -q -O- https://raw.githubusercontent.com/openstack/rally/master/install_rally.sh | bash
+
+registring openrc file: “. cc1718-group18-openrc.sh admin admin”
+
+running in rally mode: “. /Users/atiq/rally/bin/activate”
+
+creating a deployment with existing users name cc1718G18Cloud: rally deployment create --file existingUsers.json --name cc1718G18Cloud
+
+checking if rally is working fine: sudo rally deployment check
+
+To execute Task 1 on rally: rally task start list_servers.json
+To generate report of the result: rally task report 80af6523-0bba-458d-9d9b-27b4e0fdda42 --out output1_1.html
+To execute Task 2 on rally: rally task start boot-and-show-server.json
+To generate report of the result: rally task report 80af6523-0bba-458d-9d9b-27b4e0fdda42 --out output2_1.html

@@ -1,0 +1,199 @@
+heat_template_version: 2015-10-15
+description: Landscape of one frontend VM and two backend VMs running Docker
+
+parameters:
+    external_net:
+        type: string
+        label: External network for allocating a floating IP
+        constraints:
+            - custom_constraint: neutron.network
+    key_pair:
+        type: string
+        label: Key Pair
+        constraints:
+            - custom_constraint: nova.keypair
+    flavor:
+        type: string
+        label: Flavor
+        constraints:
+            - custom_constraint: nova.flavor
+    image:
+        type: string
+        label: Image Name
+        constraints:
+            - custom_constraint: glance.image
+    zone:
+        type: string
+        label: Availability Zone
+        default: Default
+
+resources:
+
+    network:
+        type: OS::Neutron::Net
+        properties:
+            name:
+                str_replace:
+                    template: STACK-net
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+
+    subnet:
+        type: OS::Neutron::Subnet
+        properties:
+            name:
+                str_replace:
+                    template: STACK-subnet
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+            network: { get_resource: network }
+            cidr: "192.168.0.0/24"
+
+    router:
+        type: OS::Neutron::Router
+        properties:
+            name:
+                str_replace:
+                    template: STACK-router
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+            external_gateway_info:
+                network: { get_param: external_net }
+
+    router_interface:
+        type: OS::Neutron::RouterInterface
+        properties:
+            router: { get_resource: router }
+            subnet: { get_resource: subnet }
+
+    security_group_frontend:
+        type: OS::Neutron::SecurityGroup
+        properties:
+            name:
+                str_replace:
+                    template: STACK-security-group-frontend
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+            rules:
+                - { protocol: icmp }
+                - { protocol: tcp, port_range_min: 22, port_range_max: 22 }
+                - { protocol: tcp, port_range_min: 80, port_range_max: 80 }
+                
+    security_group_docker_manager:
+        type: OS::Neutron::SecurityGroup
+        properties:
+            name:
+                str_replace:
+                    template: STACK-security-group-docker-manager
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+            rules:
+                - 
+                    protocol: tcp
+                    port_range_min: 2377
+                    port_range_max: 2377
+                    remote_mode: remote_group_id
+                    remote_group_id: { get_resource: security_group_backend }
+
+    security_group_backend:
+        type: OS::Neutron::SecurityGroup
+        properties:
+            name:
+                str_replace:
+                    template: STACK-security-group-backend
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+            rules:
+                - 
+                    protocol: icmp
+                    remote_mode: remote_group_id
+                    remote_group_id: { get_resource: security_group_frontend }
+                - 
+                    protocol: tcp
+                    port_range_min: 22
+                    port_range_max: 22
+                    remote_mode: remote_group_id
+                    remote_group_id: { get_resource: security_group_frontend }
+                - 
+                    protocol: tcp
+                    port_range_min: 8000
+                    port_range_max: 8000
+                    remote_mode: remote_group_id
+                    remote_group_id: { get_resource: security_group_frontend }
+
+    floating_ip:
+        type: OS::Neutron::FloatingIP
+        properties:
+            floating_network: { get_param: external_net }
+            port_id: { get_attr: [ frontend, port ] }
+
+    frontend:
+        type: server.yaml
+        properties:
+            name: 
+                str_replace:
+                    template: STACK-frontend
+                    params:
+                        STACK: { get_param: "OS::stack_name" }
+            key_pair: { get_param: key_pair }
+            image: { get_param: image }
+            flavor: { get_param: flavor }
+            zone: { get_param: zone }
+            network: { get_resource: network }
+            security_groups: [ { get_resource: security_group_frontend }, { get_resource: security_group_docker_manager } ]
+            init_code: |
+                # Install an up-to-date version of Docker
+                apt update
+                apt install -y jq linux-image-extra-$(uname -r) linux-image-extra-virtual apt-transport-https ca-certificates curl software-properties-common
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+                apt-key fingerprint <apt-key-fingerprint>
+                add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+                apt update
+                apt install -y docker-ce
+                echo '{"experimental": true, "debug": true}' > /etc/docker/daemon.json
+                service docker restart
+
+                # Install Docker Compose (not necessary, but convenient)
+                wget -O /usr/local/bin/docker-compose -L https://github.com/docker/compose/releases/download/1.14.0/docker-compose-`uname -s`-`uname -m`
+                chmod +x /usr/local/bin/docker-compose
+
+    backends:
+        type: OS::Heat::ResourceGroup
+        properties:
+            count: 2
+            resource_def:
+                type: server.yaml
+                properties:
+                    name: 
+                        str_replace:
+                            template: STACK-backend-%index% 
+                            params:
+                                STACK: { get_param: "OS::stack_name" }
+                    key_pair: { get_param: key_pair }
+                    image: { get_param: image }
+                    flavor: { get_param: flavor }
+                    zone: { get_param: zone }
+                    network: { get_resource: network }
+                    security_groups: [ { get_resource: security_group_backend } ]
+                    init_code: |
+                        # Install an up-to-date version of Docker
+                        apt update
+                        apt install -y jq linux-image-extra-$(uname -r) linux-image-extra-virtual apt-transport-https ca-certificates curl software-properties-common
+                        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+                        apt-key fingerprint <apt-key-fingerprint>
+                        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+                        apt update
+                        apt install -y docker-ce
+                        echo '{"experimental": true, "debug": true}' > /etc/docker/daemon.json
+                        service docker restart
+
+outputs:
+    private_ip:
+        description: Private virtual IP of the frontend server
+        value: { get_attr: [ frontend, ip ] }
+    floating_ip:
+        description: Floating IP of the frontend server
+        value: { get_attr: [ floating_ip, floating_ip_address ] }
+    backend_ips:
+        description: Virtual IPs of the backend servers
+        value: { get_attr: [ backends, ip ] }

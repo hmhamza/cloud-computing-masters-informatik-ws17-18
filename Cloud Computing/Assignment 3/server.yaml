@@ -1,0 +1,89 @@
+heat_template_version: 2015-10-15
+description: One VM instance
+
+parameters:
+    name:
+        type: string
+        label: Name of the VM
+    key_pair:
+        type: string
+        label: Key Pair
+        constraints:
+            - custom_constraint: nova.keypair
+    flavor:
+        type: string
+        label: Flavor
+        constraints:
+            - custom_constraint: nova.flavor
+    image:
+        type: string
+        label: Image Name
+        constraints:
+            - custom_constraint: glance.image
+    network:
+        type: string
+        label: Network
+        constraints:
+            - custom_constraint: neutron.network
+    zone:
+        type: string
+        label: Availability Zone
+        default: Default
+    security_groups:
+        type: comma_delimited_list
+        label: Security Group(s)
+        default: "default"
+    init_code:
+        type: string
+        label: Script to be executed after creating the Server
+        default: ""
+
+resources:
+
+    # This port is a separate resource used to assign the security groups
+    # to the VM. Can also be used to attach a OS::Neutron::FloatingIP to the VM.
+    port:
+        type: OS::Neutron::Port
+        properties:
+            network: { get_param: network }
+            name:
+                str_replace:
+                    template: port-VM_NAME
+                    params:
+                        VM_NAME: { get_param: name }
+            security_groups:
+                get_param: security_groups
+    
+    cloud_init:
+        type: OS::Heat::CloudConfig
+        properties:
+            cloud_config:
+                runcmd:
+                    - str_replace:
+                        template: |
+                            bash -s <<"xxx_CUSTOM_SETUP_CODE_xxx"
+                            $THE_CODE
+                            xxx_CUSTOM_SETUP_CODE_xxx
+                        params:
+                            $THE_CODE: { get_param: init_code }
+
+    instance:
+        type: OS::Nova::Server
+        properties:
+            name: { get_param: name }
+            key_name: { get_param: key_pair }
+            image: { get_param: image }
+            flavor: { get_param: flavor }
+            availability_zone: { get_param: zone }
+            networks:
+                - port: { get_resource: port }
+            user_data_format: RAW
+            user_data: { get_resource: cloud_init }
+
+outputs:
+    ip:
+        description: Virtual IP address of instance
+        value: { get_attr: [ instance, first_address ] }
+    port:
+        description: Port ID of instance
+        value: { get_resource: port }

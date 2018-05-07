@@ -1,0 +1,16 @@
+{
+    "openstack": {
+        "auth_url": "http://cloud.cit.tu-berlin.de:5000/v2.0",
+        "region_name": "RegionOne",
+        "endpoint_type": "public",
+        "users": [{
+
+            "username": "cc1718-group18",
+            "password": "<password>",
+            "tenant_name": "cc1718-group18"
+
+        }],
+        "https_insecure": false,
+        "https_cacert": ""
+    }
+}
